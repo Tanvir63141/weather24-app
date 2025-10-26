@@ -102,9 +102,10 @@ def home():
             :root { font-family: 'Inter', sans-serif; }
         </style>
     </head>
-    <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <body class="bg-gray-100 min-h-screen flex items-start justify-center p-4">
 
-        <div class="w-full max-w-3xl bg-white rounded-2xl shadow-2xl p-6 md:p-10 space-y-8">
+        <div class="w-full max-w-3xl bg-white rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
+
             <h1 class="text-3xl font-extrabold text-gray-800 text-center flex items-center justify-center gap-2">
                 <i data-lucide="cloud-sun-wind" class="w-7 h-7 text-indigo-600"></i>
                 Weather24
@@ -129,28 +130,32 @@ def home():
                 <p class="mt-2 text-sm">Fetching weather data...</p>
             </div>
 
-            <div id="weatherResult" class="hidden space-y-8">
+            <div id="weatherResult" class="hidden space-y-6 sm:space-y-8">
                 <div class="text-center bg-indigo-50 p-4 rounded-xl shadow-inner">
-                    <h2 id="locationName" class="text-4xl font-extrabold text-gray-900">Welcome!</h2>
-                    <p id="weatherDescription" class="text-xl text-gray-600 mt-1">Search a city to begin.</p>
+                    <h2 id="locationName" class="text-3xl sm:text-4xl font-extrabold text-gray-900">Welcome!</h2>
+                    <p id="weatherDescription" class="text-lg sm:text-xl text-gray-600 mt-1">Search a city to begin.</p>
                 </div>
-                <div class="grid grid-cols-3 gap-4">
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4"> 
                     <div class="bg-white p-5 rounded-xl border border-indigo-200 shadow-lg text-center">
                         <p class="text-sm font-medium text-gray-500">Temperature</p>
                         <p class="text-6xl font-extrabold text-indigo-700 mt-1" id="temperature">--</p>
                         <p class="text-sm font-medium text-gray-500 mt-2">Feels Like: <span id="feelsLike" class="font-semibold text-gray-700">--</span></p>
                     </div>
-                    <div id="aqiCard" class="bg-white p-5 rounded-xl shadow-lg border-2 text-center transition duration-300 col-span-1">
+
+                    <div id="aqiCard" class="bg-white p-5 rounded-xl shadow-lg border-2 text-center transition duration-300">
                         <p class="text-sm font-medium text-gray-500">US AQI (Air Quality)</p>
                         <p class="text-6xl font-extrabold mt-1" id="aqiValue">--</p>
                         <p class="text-base font-semibold mt-1" id="aqiStatus">--</p>
                     </div>
+                    
                     <div class="bg-white p-5 rounded-xl shadow-lg border-2 border-orange-200 text-center">
                         <p class="text-sm font-medium text-gray-500">UV Index</p>
                         <p class="text-6xl font-extrabold text-orange-600 mt-1" id="uvIndex">--</p>
                         <p class="text-base font-medium text-gray-500 mt-2" id="uvRisk">--</p>
                     </div>
                 </div>
+
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="bg-gray-50 p-4 rounded-xl shadow-md flex flex-col items-center justify-center gap-1">
                         <i data-lucide="wind" class="w-7 h-7 text-cyan-600"></i>
@@ -174,17 +179,18 @@ def home():
                         <p id="pm25" class="text-xl font-semibold text-gray-800">--</p>
                     </div>
                 </div>
+
                 <div class="grid grid-cols-2 gap-4 border-t pt-4 border-gray-200">
-                    <div class="flex items-center justify-center gap-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <div class="flex items-center justify-center gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <i data-lucide="sunrise" class="w-7 h-7 text-orange-500"></i>
-                        <div>
+                        <div class="text-center sm:text-left"> 
                             <p class="text-base text-gray-500">Sunrise</p>
                             <p id="sunriseTime" class="text-xl font-semibold text-gray-800">--:--</p>
                         </div>
                     </div>
-                    <div class="flex items-center justify-center gap-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <div class="flex items-center justify-center gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <i data-lucide="sunset" class="w-7 h-7 text-red-500"></i>
-                        <div>
+                        <div class="text-center sm:text-left">
                             <p class="text-base text-gray-500">Sunset</p>
                             <p id="sunsetTime" class="text-xl font-semibold text-gray-800">--:--</p>
                         </div>
@@ -276,7 +282,8 @@ def home():
                 document.getElementById('aqiValue').textContent = data.aqiValue ?? "N/A";
                 document.getElementById('aqiStatus').textContent = status;
                 document.getElementById('pm25').textContent = data.pm25;
-                aqiCard.className = `p-5 rounded-xl shadow-lg border-2 text-center transition duration-300 ${colorClasses} col-span-1`;
+                // ADJUSTMENT: Removed specific column spanning classes for responsiveness
+                aqiCard.className = `bg-white p-5 rounded-xl shadow-lg border-2 text-center transition duration-300 ${colorClasses}`; 
                 document.getElementById('aqiValue').style.color = status === "Hazardous" ? 'white' : '';  
                 document.getElementById('aqiStatus').style.color = status === "Hazardous" ? 'white' : '';  
                 document.getElementById('uvIndex').textContent = data.uvIndex;
