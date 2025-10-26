@@ -93,11 +93,8 @@ def home():
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Weather24 | Global Weather & AQI</title>
-        <!-- Load Tailwind CSS (Our CSS) -->
         <script src="https://cdn.tailwindcss.com"></script>
-        <!-- Load Lucide Icons -->
         <script src="https://unpkg.com/lucide@latest"></script>
-        <!-- Google Font -->
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -107,27 +104,23 @@ def home():
     </head>
     <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
 
-        <!-- This is our HTML structure -->
-        <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-6 md:p-10 space-y-8">
-
+        <div class="w-full max-w-3xl bg-white rounded-2xl shadow-2xl p-6 md:p-10 space-y-8">
             <h1 class="text-3xl font-extrabold text-gray-800 text-center flex items-center justify-center gap-2">
                 <i data-lucide="cloud-sun-wind" class="w-7 h-7 text-indigo-600"></i>
                 Weather24
             </h1>
 
-            <!-- Search Input -->
             <div class="flex flex-col sm:flex-row gap-3">
                 <input type="text" id="cityInput" placeholder="Enter city name (e.g., Paris, Sydney)"
-                       class="flex-grow p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 transition duration-150 shadow-sm text-gray-700"
-                       onkeydown="if(event.key === 'Enter') document.getElementById('searchButton').click()">
+                        class="flex-grow p-3 border-2 border-gray-300 rounded-lg focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600 transition duration-150 shadow-sm text-gray-700"
+                        onkeydown="if(event.key === 'Enter') document.getElementById('searchButton').click()">
                 <button id="searchButton"
-                        class="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-200 shadow-lg shadow-indigo-300 active:bg-indigo-800 flex items-center justify-center gap-2">
+                         class="w-full sm:w-auto px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-200 shadow-lg shadow-indigo-300 active:bg-indigo-800 flex items-center justify-center gap-2">
                     <i data-lucide="search" class="w-5 h-5"></i>
                     Search
                 </button>
             </div>
 
-            <!-- Loading Spinner -->
             <div id="loadingIndicator" class="text-center text-indigo-600 hidden">
                 <svg class="animate-spin h-8 w-8 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -136,79 +129,75 @@ def home():
                 <p class="mt-2 text-sm">Fetching weather data...</p>
             </div>
 
-            <!-- Weather Results Area -->
             <div id="weatherResult" class="hidden space-y-8">
-                <!-- ... (HTML structure for results) ... -->
                 <div class="text-center bg-indigo-50 p-4 rounded-xl shadow-inner">
                     <h2 id="locationName" class="text-4xl font-extrabold text-gray-900">Welcome!</h2>
                     <p id="weatherDescription" class="text-xl text-gray-600 mt-1">Search a city to begin.</p>
                 </div>
                 <div class="grid grid-cols-3 gap-4">
                     <div class="bg-white p-5 rounded-xl border border-indigo-200 shadow-lg text-center">
-                        <p class="text-xs font-medium text-gray-500">Temperature</p>
-                        <p class="text-5xl font-extrabold text-indigo-700 mt-1" id="temperature">--</p>
-                        <p class="text-xs font-medium text-gray-500 mt-2">Feels Like: <span id="feelsLike" class="font-semibold text-gray-700">--</span></p>
+                        <p class="text-sm font-medium text-gray-500">Temperature</p>
+                        <p class="text-6xl font-extrabold text-indigo-700 mt-1" id="temperature">--</p>
+                        <p class="text-sm font-medium text-gray-500 mt-2">Feels Like: <span id="feelsLike" class="font-semibold text-gray-700">--</span></p>
                     </div>
-                    <div id="aqiCard" class="bg-white p-5 rounded-xl shadow-lg border-2 text-center transition duration-300 col-span-2 md:col-span-1">
-                        <p class="text-xs font-medium text-gray-500">US AQI (Air Quality)</p>
-                        <p class="text-5xl font-extrabold mt-1" id="aqiValue">--</p>
-                        <p class="text-sm font-semibold mt-1" id="aqiStatus">--</p>
+                    <div id="aqiCard" class="bg-white p-5 rounded-xl shadow-lg border-2 text-center transition duration-300 col-span-1">
+                        <p class="text-sm font-medium text-gray-500">US AQI (Air Quality)</p>
+                        <p class="text-6xl font-extrabold mt-1" id="aqiValue">--</p>
+                        <p class="text-base font-semibold mt-1" id="aqiStatus">--</p>
                     </div>
                     <div class="bg-white p-5 rounded-xl shadow-lg border-2 border-orange-200 text-center">
-                        <p class="text-xs font-medium text-gray-500">UV Index</p>
-                        <p class="text-5xl font-extrabold text-orange-600 mt-1" id="uvIndex">--</p>
-                        <p class="text-sm font-medium text-gray-500 mt-2" id="uvRisk">--</p>
+                        <p class="text-sm font-medium text-gray-500">UV Index</p>
+                        <p class="text-6xl font-extrabold text-orange-600 mt-1" id="uvIndex">--</p>
+                        <p class="text-base font-medium text-gray-500 mt-2" id="uvRisk">--</p>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="bg-gray-50 p-4 rounded-xl shadow-md flex flex-col items-center justify-center gap-1">
-                        <i data-lucide="wind" class="w-6 h-6 text-cyan-600"></i>
-                        <p class="text-sm text-gray-500">Wind</p>
-                        <p id="windSpeed" class="text-lg font-semibold text-gray-800">--</p>
-                        <p id="windDirection" class="text-xs text-gray-500">--</p>
+                        <i data-lucide="wind" class="w-7 h-7 text-cyan-600"></i>
+                        <p class="text-base text-gray-500">Wind</p>
+                        <p id="windSpeed" class="text-xl font-semibold text-gray-800">--</p>
+                        <p id="windDirection" class="text-sm text-gray-500">--</p>
                     </div>
                     <div class="bg-gray-50 p-4 rounded-xl shadow-md flex flex-col items-center justify-center gap-1">
-                        <i data-lucide="droplet" class="w-6 h-6 text-blue-600"></i>
-                        <p class="text-sm text-gray-500">Humidity</p>
-                        <p id="humidity" class="text-lg font-semibold text-gray-800">--</p>
+                        <i data-lucide="droplet" class="w-7 h-7 text-blue-600"></i>
+                        <p class="text-base text-gray-500">Humidity</p>
+                        <p id="humidity" class="text-xl font-semibold text-gray-800">--</p>
                     </div>
                     <div class="bg-gray-50 p-4 rounded-xl shadow-md flex flex-col items-center justify-center gap-1">
-                        <i data-lucide="cloud-rain" class="w-6 h-6 text-indigo-600"></i>
-                        <p class="text-sm text-gray-500">Precipitation (1h)</p>
-                        <p id="precipitation" class="text-lg font-semibold text-gray-800">--</p>
+                        <i data-lucide="cloud-rain" class="w-7 h-7 text-indigo-600"></i>
+                        <p class="text-base text-gray-500">Precipitation (1h)</p>
+                        <p id="precipitation" class="text-xl font-semibold text-gray-800">--</p>
                     </div>
                     <div class="bg-gray-50 p-4 rounded-xl shadow-md flex flex-col items-center justify-center gap-1">
-                        <i data-lucide="microscope" class="w-6 h-6 text-green-600"></i>
-                        <p class="text-sm text-gray-500">PM2.5</p>
-                        <p id="pm25" class="text-lg font-semibold text-gray-800">--</p>
+                        <i data-lucide="microscope" class="w-7 h-7 text-green-600"></i>
+                        <p class="text-base text-gray-500">PM2.5</p>
+                        <p id="pm25" class="text-xl font-semibold text-gray-800">--</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4 border-t pt-4 border-gray-200">
-                    <div class="flex items-center justify-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        <i data-lucide="sunrise" class="w-6 h-6 text-orange-500"></i>
+                    <div class="flex items-center justify-center gap-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <i data-lucide="sunrise" class="w-7 h-7 text-orange-500"></i>
                         <div>
-                            <p class="text-sm text-gray-500">Sunrise</p>
-                            <p id="sunriseTime" class="text-lg font-semibold text-gray-800">--:--</p>
+                            <p class="text-base text-gray-500">Sunrise</p>
+                            <p id="sunriseTime" class="text-xl font-semibold text-gray-800">--:--</p>
                         </div>
                     </div>
-                    <div class="flex items-center justify-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                        <i data-lucide="sunset" class="w-6 h-6 text-red-500"></i>
+                    <div class="flex items-center justify-center gap-4 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <i data-lucide="sunset" class="w-7 h-7 text-red-500"></i>
                         <div>
-                            <p class="text-sm text-gray-500">Sunset</p>
-                            <p id="sunsetTime" class="text-lg font-semibold text-gray-800">--:--</p>
+                            <p class="text-base text-gray-500">Sunset</p>
+                            <p id="sunsetTime" class="text-xl font-semibold text-gray-800">--:--</p>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Error Message Box -->
             <div id="errorMessage" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
                 <p class="font-bold">Error fetching data</p>
                 <p id="errorText"></p>
             </div>
         </div>
 
-        <!-- This JavaScript runs in the user's browser -->
         <script>
             // Initialize Lucide Icons
             lucide.createIcons();
@@ -226,7 +215,7 @@ def home():
             // --- JS Helper Functions (for display) ---
             function getAqiStatus(aqi) {
                 let status, colorClasses;
-                if (aqi === null || aqi === undefined) { 
+                if (aqi === null || aqi === undefined) {  
                     return { status: "N/A", colorClasses: "bg-gray-100 border-gray-300" };
                 }
                 if (aqi <= 50) { status = "Good"; colorClasses = "bg-green-100 border-green-400 text-green-700"; }
@@ -254,7 +243,7 @@ def home():
                     hour: '2-digit',
                     minute: '2-digit',
                     hour12: true,
-                    timeZone: 'UTC' 
+                    timeZone: 'UTC'  
                 });
             }
             
@@ -287,9 +276,9 @@ def home():
                 document.getElementById('aqiValue').textContent = data.aqiValue ?? "N/A";
                 document.getElementById('aqiStatus').textContent = status;
                 document.getElementById('pm25').textContent = data.pm25;
-                aqiCard.className = `p-5 rounded-xl shadow-lg border-2 text-center transition duration-300 ${colorClasses}`;
-                document.getElementById('aqiValue').style.color = status === "Hazardous" ? 'white' : ''; 
-                document.getElementById('aqiStatus').style.color = status === "Hazardous" ? 'white' : ''; 
+                aqiCard.className = `p-5 rounded-xl shadow-lg border-2 text-center transition duration-300 ${colorClasses} col-span-1`;
+                document.getElementById('aqiValue').style.color = status === "Hazardous" ? 'white' : '';  
+                document.getElementById('aqiStatus').style.color = status === "Hazardous" ? 'white' : '';  
                 document.getElementById('uvIndex').textContent = data.uvIndex;
                 document.getElementById('uvRisk').textContent = getUVRisk(data.uvIndex);
                 document.getElementById('sunriseTime').textContent = formatTime(data.sunrise, data.timezone);
