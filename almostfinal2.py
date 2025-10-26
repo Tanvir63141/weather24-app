@@ -110,7 +110,7 @@ def home():
         <!-- This is our HTML structure -->
         <div class="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-6 md:p-10 space-y-8">
 
-            <h1 class="text-3xl font-extrabold text-gray-800 text-center flex items-center justify-center gap-2">
+            <h1 class="text-4xl font-extrabold text-gray-800 text-center flex items-center justify-center gap-2">
                 <i data-lucide="cloud-sun-wind" class="w-7 h-7 text-indigo-600"></i>
                 Weather24
             </h1>
@@ -174,7 +174,7 @@ def home():
                     </div>
                     <div class="bg-gray-50 p-4 rounded-xl shadow-md flex flex-col items-center justify-center gap-1">
                         <i data-lucide="cloud-rain" class="w-6 h-6 text-indigo-600"></i>
-                        <p class="text-sm text-gray-500">Precipitation (1h)</p>
+                        <p class="text-sm text-gray-500">Precipitation </p>
                         <p id="precipitation" class="text-lg font-semibold text-gray-800">--</p>
                     </div>
                     <div class="bg-gray-50 p-4 rounded-xl shadow-md flex flex-col items-center justify-center gap-1">
