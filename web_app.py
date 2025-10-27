@@ -1,20 +1,22 @@
+## Complete Updated Weather24 Pro Code
+
+#python
 import requests
 import json
 from flask import Flask, request, jsonify, Response
 from datetime import datetime, timedelta, timezone
 import os
-import math # Import math for rounding/checking NaNs
+import math
 
 # --- 1. PYTHON BACKEND LOGIC (using Flask) ---
 
 app = Flask(__name__)
 
 # --- Configuration ---
-# NOTE: In a professional setup, API keys would be stored securely in environment variables.
 OWM_API_KEY = "207cf060d7c9af525f46c1e0f15b5b60"
 OWM_WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
 OM_AQI_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
-OM_FORECAST_URL = "https://api.open-meteo.com/v1/forecast" # Used for UV
+OM_FORECAST_URL = "https://api.open-meteo.com/v1/forecast" 
 
 UNITS = "metric"
 
@@ -30,8 +32,6 @@ def get_aqi_status_and_color(aqi_value):
     """Returns AQI status and a class name for styling (used by frontend)."""
     if aqi_value is None:
         return {"status": "N/A", "colorClasses": "aqi-na"}
-
-    # US EPA AQI Categories
     if aqi_value <= 50:
         return {"status": "Good", "colorClasses": "aqi-good"}
     elif aqi_value <= 100:
@@ -47,7 +47,8 @@ def get_aqi_status_and_color(aqi_value):
 
 def get_uv_risk(uvi):
     """Returns UV risk level based on the index (used by frontend)."""
-    if uvi is None: return "N/A"
+    if uvi is None or (isinstance(uvi, str) and uvi == 'N/A') or (isinstance(uvi, (float, int)) and math.isnan(uvi)): 
+        return "N/A"
     uvi = float(uvi)
     if uvi < 3: return "Low Risk"
     if uvi < 6: return "Moderate Risk"
@@ -55,16 +56,80 @@ def get_uv_risk(uvi):
     if uvi < 11: return "Very High Risk"
     return "Extreme Risk"
 
-def map_weather_to_lucide_icon(weather_description):
-    """Maps a weather description to a Lucide icon name for better UI."""
-    desc = weather_description.lower()
-    if 'clear' in desc or 'sun' in desc: return 'sun'
-    if 'cloud' in desc or 'overcast' in desc: return 'cloud'
-    if 'rain' in desc or 'shower' in desc or 'drizzle' in desc: return 'cloud-rain'
-    if 'thunder' in desc: return 'cloud-lightning'
-    if 'snow' in desc or 'sleet' in desc: return 'cloud-snow'
-    if 'mist' in desc or 'fog' in desc or 'haze' in desc: return 'fog'
-    return 'cloud-sun-wind' # Default
+def map_wmo_to_lucide_icon(code, is_day=1):
+    """Maps WMO weather codes (Open-Meteo) to Lucide icon names."""
+    if code in [0]: return 'sun' if is_day else 'moon' # Clear sky
+    if code in [1, 2, 3]: return 'cloud-sun' if is_day else 'cloud-moon' # Mainly clear, partly cloudy, overcast
+    if code in [45, 48]: return 'fog' # Fog and depositing rime fog
+    if code in [51, 53, 55]: return 'cloud-drizzle' # Drizzle
+    if code in [56, 57]: return 'snow-flake' if is_day else 'cloud-snow' # Freezing Drizzle
+    if code in [61, 63, 65, 80, 81, 82]: return 'cloud-rain' # Rain
+    if code in [66, 67]: return 'cloud-drizzle' # Freezing Rain
+    if code in [71, 73, 75, 85, 86]: return 'snow-flake' # Snow fall
+    if code in [77]: return 'cloud-hail' # Snow grains
+    if code in [95, 96, 99]: return 'cloud-lightning' # Thunderstorm
+    return 'cloud' # Default
+
+def format_hourly_forecast(hourly_data, timezone_offset):
+    """Processes Open-Meteo hourly data into a simplified list for the frontend."""
+    if not hourly_data or not hourly_data.get('time'):
+        return []
+
+    forecast_list = []
+    # We grab the next 8 hours of data (time, temp, weather code)
+    for i in range(min(8, len(hourly_data['time']))):
+        # We need to determine if it is day or night for the hourly icons
+        is_day = hourly_data.get('is_day', [1])[i]
+        weather_code = hourly_data.get('weather_code', [800])[i]
+
+        forecast_list.append({
+            'time': hourly_data['time'][i], # UTC timestamp string
+            'temperature': f"{hourly_data.get('temperature_2m', [None])[i]:.0f}°",
+            'iconName': map_wmo_to_lucide_icon(weather_code, is_day)
+        })
+    return forecast_list
+    
+def format_daily_forecast(daily_data):
+    """Processes Open-Meteo daily data for 7-day view."""
+    if not daily_data or not daily_data.get('time'):
+        return []
+
+    forecast_list = []
+    # We grab the next 7 days of data
+    for i in range(min(7, len(daily_data['time']))):
+        date_str = daily_data['time'][i]
+        weather_code = daily_data.get('weather_code', [800])[i]
+        temp_max = daily_data.get('temperature_2m_max', [None])[i]
+        temp_min = daily_data.get('temperature_2m_min', [None])[i]
+        
+        # Determine day name
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        day_name = "Today" if i == 0 else date_obj.strftime("%a")
+
+        forecast_list.append({
+            'day': day_name,
+            'iconName': map_wmo_to_lucide_icon(weather_code, is_day=1), # Assume day icon for daily view
+            'tempMax': f"{temp_max:.0f}°" if temp_max is not None else '--',
+            'tempMin': f"{temp_min:.0f}°" if temp_min is not None else '--',
+        })
+    return forecast_list
+
+def get_background_gradient(description):
+    """Maps weather description to a professional Tailwind gradient class."""
+    desc = description.lower()
+    if 'clear' in desc or 'sun' in desc:
+        return "bg-gradient-to-br from-blue-200 to-yellow-100 text-gray-900"
+    if 'cloud' in desc or 'overcast' in desc:
+        return "bg-gradient-to-br from-gray-200 to-blue-100 text-gray-900"
+    if 'rain' in desc or 'shower' in desc or 'drizzle' in desc:
+        return "bg-gradient-to-br from-slate-400 to-blue-500 text-white"
+    if 'thunder' in desc:
+        return "bg-gradient-to-br from-slate-800 to-purple-800 text-white"
+    if 'snow' in desc or 'sleet' in desc:
+        return "bg-gradient-to-br from-white to-sky-200 text-gray-900"
+    if 'mist' in desc or 'fog' in desc or 'haze' in desc:
+        return "bg-gradient-to-br from-gray-300 to-gray-100 text-gray-900"
+    return "bg-gradient-to-br from-indigo-100 to-white text-gray-900"
 
 # --- API Endpoint 1: The Data (Handles API calls) ---
 @app.route('/api/weather')
@@ -76,7 +141,7 @@ def get_weather_data():
     # 1. Fetch Core Weather (OWM)
     owm_params = {'q': city_name, 'units': UNITS, 'appid': OWM_API_KEY}
     try:
-        weather_response = requests.get(OWM_WEATHER_URL, params=owm_params)
+        weather_response = requests.get(OWM_WEATHER_URL, params=owm_params, timeout=5)
         weather_response.raise_for_status()
         weather_data = weather_response.json()
     except requests.exceptions.HTTPError as err:
@@ -88,10 +153,8 @@ def get_weather_data():
 
     lat, lon = weather_data['coord']['lat'], weather_data['coord']['lon']
     
-    # 2. Fetch AQI and UV Index (Open-Meteo) - Separate requests for robustness
-    aqi_data, uv_data = {}, {}
-    
-    # Fetch AQI
+    # 2. Fetch AQI
+    aqi_data = {}
     try:
         aqi_params = {'latitude': lat, 'longitude': lon, 'hourly': 'us_aqi,pm2_5', 'timezone': 'auto'}
         aqi_response = requests.get(OM_AQI_URL, params=aqi_params, timeout=5)
@@ -100,62 +163,75 @@ def get_weather_data():
     except Exception as e:
         print(f"Warning: Could not fetch AQI data. Error: {e}")
 
-    # Fetch UV Index
+    # 3. Fetch UV, Hourly, and Daily Forecast (Open-Meteo)
+    forecast_data = {}
     try:
-        uv_params = {'latitude': lat, 'longitude': lon, 'current': 'uv_index', 'forecast_days': 1, 'timezone': 'auto'}
-        uv_response = requests.get(OM_FORECAST_URL, params=uv_params, timeout=5)
-        uv_response.raise_for_for_status()
-        uv_data = uv_response.json()
+        uv_hourly_daily_params = {
+            'latitude': lat, 
+            'longitude': lon, 
+            'current': 'uv_index,is_day', 
+            'hourly': 'temperature_2m,weather_code,is_day', # Added is_day to hourly
+            'daily': 'weather_code,temperature_2m_max,temperature_2m_min', # Added daily fields
+            'forecast_days': 7, 
+            'timezone': 'auto'
+        }
+        forecast_response = requests.get(OM_FORECAST_URL, params=uv_hourly_daily_params, timeout=5)
+        forecast_response.raise_for_status() 
+        forecast_data = forecast_response.json()
     except Exception as e:
-        print(f"Warning: Could not fetch UV data. Error: {e}")
+        print(f"Warning: Could not fetch UV/Hourly/Daily data. Error: {e}")
 
-    # 3. Consolidate Data
+    # 4. Consolidate Data
     rain_1h = weather_data.get('rain', {}).get('1h', 0)
     snow_1h = weather_data.get('snow', {}).get('1h', 0)
     precipitation_total = rain_1h + snow_1h
     
-    # Handle hourly data from Open-Meteo, finding the current one by time index
-    # For simplicity, we just take the first entry (which should be close to 'now')
     current_aqi = aqi_data.get('hourly', {}).get('us_aqi', [None])
     current_pm25 = aqi_data.get('hourly', {}).get('pm2_5', [None])
-    
     aqi_value = current_aqi[0] if current_aqi and current_aqi[0] is not None else None
     pm25_value = current_pm25[0] if current_pm25 and current_pm25[0] is not None else None
 
-    # UV is current data
-    uvi_value = uv_data.get('current', {}).get('uv_index')
+    uvi_value = forecast_data.get('current', {}).get('uv_index')
+    is_day = forecast_data.get('current', {}).get('is_day', 1) 
+    time_of_day = 'day' if is_day == 1 else 'night'
     
-    # Format UV and PM2.5 strings
+    # Get initial weather description and map to icon/gradient
+    weather_desc = weather_data['weather'][0]['description']
+    wmo_code = weather_data['weather'][0].get('id', 800) # OpenWeatherMap ID is not WMO, but a fallback is fine
+
+    # Format strings
     formatted_pm25 = f"{pm25_value:.1f} µg/m³" if pm25_value is not None and not math.isnan(pm25_value) else "N/A"
     formatted_uvi = f"{uvi_value:.1f}" if uvi_value is not None and not math.isnan(uvi_value) else "N/A"
 
-    # Get AQI Status/Color
     aqi_info = get_aqi_status_and_color(aqi_value)
 
     final_data = {
         "locationName": f"{weather_data['name']}, {weather_data['sys']['country']}",
-        "description": weather_data['weather'][0]['description'].title(),
-        "iconName": map_weather_to_lucide_icon(weather_data['weather'][0]['description']), # New field for dynamic icon
+        "description": weather_desc.title(),
+        # For the main icon, we still use a simple description mapping for OWM data
+        "iconName": map_wmo_to_lucide_icon(wmo_code, is_day), 
+        "gradientClass": get_background_gradient(weather_desc), 
         "temperature": f"{weather_data['main']['temp']:.0f}°C",
         "feelsLike": f"{weather_data['main']['feels_like']:.0f}°C",
         
-        # AQI/PM2.5
         "aqiValue": aqi_value,
-        "aqiStatus": aqi_info['status'], # Pass status/colors to frontend
+        "aqiStatus": aqi_info['status'], 
         "aqiColorClasses": aqi_info['colorClasses'],
         "pm25": formatted_pm25,
         
-        # UV
         "uvIndex": formatted_uvi,
-        "uvRisk": get_uv_risk(uvi_value), # Calculate UV risk in backend for robustness
+        "uvRisk": get_uv_risk(uvi_value), 
         
         "humidity": f"{weather_data['main']['humidity']}%",
         "windSpeed": f"{weather_data['wind']['speed']:.1f} m/s",
-        "windDirection": deg_to_cardinal(weather_data['wind'].get('deg')),
+        "windDirection": f"{deg_to_cardinal(weather_data['wind'].get('deg'))}",
         "precipitation": f"{precipitation_total:.1f} mm",
         "sunrise": weather_data['sys']['sunrise'],
         "sunset": weather_data['sys']['sunset'],
-        "timezone": weather_data.get('timezone', 0)
+        "timezone": weather_data.get('timezone', 0),
+        
+        "hourlyForecast": format_hourly_forecast(forecast_data.get('hourly', {}), weather_data.get('timezone', 0)),
+        "dailyForecast": format_daily_forecast(forecast_data.get('daily', {}))
     }
     
     return jsonify(final_data)
@@ -164,7 +240,6 @@ def get_weather_data():
 # --- API Endpoint 2: The Website (Serves the HTML/CSS/JS) ---
 @app.route('/')
 def home():
-    # This triple-quoted string is the entire HTML/CSS/JS front-end
     html_content = """
     <!DOCTYPE html>
     <html lang="en">
@@ -174,37 +249,47 @@ def home():
         <title>Weather24 Pro | Global Weather & AQI</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://unpkg.com/lucide@latest"></script>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
         <style>
             :root { font-family: 'Inter', sans-serif; }
-            /* --- Custom AQI Styles for Professional Visuals --- */
-            .aqi-good { border-color: #10B981; background-color: #ECFDF5; color: #065F46; } /* Green */
-            .aqi-moderate { border-color: #FBBF24; background-color: #FFFBEB; color: #B45309; } /* Yellow */
-            .aqi-sensitive { border-color: #F97316; background-color: #FFF7ED; color: #C2410C; } /* Orange */
-            .aqi-unhealthy { border-color: #EF4444; background-color: #FEF2F2; color: #991B1B; } /* Red */
-            .aqi-very-unhealthy { border-color: #8B5CF6; background-color: #F5F3FF; color: #6D28D9; } /* Purple */
-            .aqi-hazardous { border-color: #7F1D1D; background-color: #7F1D1D; color: #FFFFFF; } /* Dark Red/Maroon, White Text */
-            .aqi-na { border-color: #D1D5DB; background-color: #F9FAFB; color: #6B7280; } /* Gray */
-            
+            .content-wrapper {
+                transition: background-color 0.5s ease, background-image 0.5s ease;
+            }
+            /* AQI Styles */
+            .aqi-good { border-color: #10B981; background-color: #ECFDF5; color: #065F46; }
+            .aqi-moderate { border-color: #FBBF24; background-color: #FFFBEB; color: #B45309; }
+            .aqi-sensitive { border-color: #F97316; background-color: #FFF7ED; color: #C2410C; }
+            .aqi-unhealthy { border-color: #EF4444; background-color: #FEF2F2; color: #991B1B; }
+            .aqi-very-unhealthy { border-color: #8B5CF6; background-color: #F5F3FF; color: #6D28D9; }
+            .aqi-hazardous { border-color: #7F1D1D; background-color: #7F1D1D; color: #FFFFFF; }
+            .aqi-na { border-color: #D1D5DB; background-color: #F9FAFB; color: #6B7280; }
             .aqi-hazardous .aqi-value-text, .aqi-hazardous .aqi-status-text { color: white !important; }
-            
+
+            /* Custom scrollbar for hourly section */
+            #hourlyForecastContainer::-webkit-scrollbar {
+                height: 6px;
+            }
+            #hourlyForecastContainer::-webkit-scrollbar-thumb {
+                background: rgba(100, 116, 139, 0.5); /* slate-500 with opacity */
+                border-radius: 3px;
+            }
+            #hourlyForecastContainer::-webkit-scrollbar-track {
+                background: transparent;
+            }
         </style>
     </head>
-    <body class="bg-gray-100 min-h-screen flex items-start justify-center p-4">
+    <body class="min-h-screen flex items-start justify-center p-4 content-wrapper">
 
-        <div class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
+        <div class="w-full max-w-5xl bg-white/95 backdrop-blur-sm rounded-3xl shadow-3xl p-4 sm:p-8 md:p-10 space-y-8">
 
             <h1 class="text-3xl font-extrabold text-gray-800 text-center flex items-center justify-center gap-3">
                 <i data-lucide="cloud-sun-wind" class="w-8 h-8 text-indigo-600"></i>
                 Weather24 <span class="text-sm font-semibold text-indigo-400">PRO</span>
             </h1>
 
-            <div class="flex flex-col sm:flex-row gap-3">
-                <input type="text" id="cityInput" placeholder="Enter city name (e.g., Paris, Sydney)"
-                        class="flex-grow p-4 border-2 border-gray-300 rounded-xl focus:border-indigo-600 focus:ring-4 focus:ring-indigo-200 transition duration-300 shadow-md text-gray-700 placeholder-gray-400"
-                        onkeydown="if(event.key === 'Enter') document.getElementById('searchButton').click()">
+            <div class="flex flex-col sm:flex-row gap-4">
+                <input type="text" id="cityInput" placeholder="Enter city name (e.g., London, Tokyo)"
+                        class="flex-grow p-4 border-2 border-gray-300 rounded-xl focus:border-indigo-600 focus:ring-4 focus:ring-indigo-200 transition duration-300 shadow-md text-lg">
                 <button id="searchButton"
                          class="w-full sm:w-auto px-8 py-4 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition duration-300 shadow-xl shadow-indigo-300 active:bg-indigo-800 flex items-center justify-center gap-2 text-lg">
                     <i data-lucide="search" class="w-5 h-5"></i>
@@ -221,18 +306,18 @@ def home():
             </div>
 
             <div id="weatherResult" class="hidden space-y-8">
-                <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-indigo-50 p-6 rounded-2xl shadow-inner">
+                <div id="mainSummary" class="flex flex-col sm:flex-row sm:justify-between sm:items-center bg-indigo-50/70 p-6 rounded-2xl shadow-xl border border-indigo-200">
                     <div class="text-center sm:text-left">
                         <h2 id="locationName" class="text-4xl sm:text-5xl font-extrabold text-gray-900">City, Country</h2>
-                        <p id="weatherDescription" class="text-xl text-gray-600 mt-2 font-medium">Clear Sky</p>
+                        <p id="weatherDescription" class="text-xl text-gray-700 mt-2 font-medium">Clear Sky</p>
                     </div>
                     <div class="mt-4 sm:mt-0 flex justify-center items-center gap-4">
-                        <i data-lucide="cloud-sun-wind" id="weatherIcon" class="w-12 h-12 sm:w-16 sm:h-16 text-indigo-600"></i>
+                        <i data-lucide="sun" id="weatherIcon" class="w-16 h-16 sm:w-20 sm:h-20 text-indigo-700"></i>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6"> 
-                    <div class="bg-white p-6 rounded-2xl border-4 border-indigo-100 shadow-2xl text-center flex flex-col justify-between">
+                    <div class="bg-white p-6 rounded-2xl border-4 border-indigo-100 shadow-2xl text-center flex flex-col justify-between hover:scale-[1.02] transition duration-300">
                         <div>
                             <p class="text-lg font-semibold text-gray-500">Temperature</p>
                             <p class="text-7xl font-extrabold text-indigo-800 mt-2" id="temperature">--</p>
@@ -240,7 +325,7 @@ def home():
                         <p class="text-base font-medium text-gray-500 mt-4">Feels Like: <span id="feelsLike" class="font-bold text-gray-700">--</span></p>
                     </div>
 
-                    <div id="aqiCard" class="p-6 rounded-2xl shadow-2xl border-4 text-center transition duration-500 flex flex-col justify-between">
+                    <div id="aqiCard" class="p-6 rounded-2xl shadow-2xl border-4 text-center flex flex-col justify-between hover:scale-[1.02] transition duration-300">
                         <div>
                             <p class="text-lg font-semibold text-gray-600">US AQI (Air Quality)</p>
                             <p class="text-7xl font-extrabold mt-2 aqi-value-text" id="aqiValue">--</p>
@@ -248,7 +333,7 @@ def home():
                         <p class="text-xl font-bold mt-4 aqi-status-text" id="aqiStatus">--</p>
                     </div>
                     
-                    <div class="bg-white p-6 rounded-2xl shadow-2xl border-4 border-orange-100 text-center flex flex-col justify-between">
+                    <div class="bg-white p-6 rounded-2xl shadow-2xl border-4 border-orange-100 text-center flex flex-col justify-between hover:scale-[1.02] transition duration-300">
                         <div>
                             <p class="text-lg font-semibold text-gray-500">UV Index</p>
                             <p class="text-7xl font-extrabold text-orange-600 mt-2" id="uvIndex">--</p>
@@ -257,24 +342,48 @@ def home():
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6">
-                    <div class="bg-gray-50 p-5 rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 border border-gray-200">
+                <div class="space-y-4">
+                    <div class="flex border-b border-gray-300">
+                        <button id="tabHourly" class="px-4 py-2 text-lg font-semibold border-b-2 border-indigo-600 text-indigo-600 transition duration-300">Hourly Forecast</button>
+                        <button id="tabDaily" class="px-4 py-2 text-lg font-semibold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition duration-300">7-Day Forecast</button>
+                        <button id="tabMonthly" class="px-4 py-2 text-lg font-semibold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition duration-300">Monthly View (Concept)</button>
+                    </div>
+
+                    <div id="contentHourly" class="tab-content">
+                        <div id="hourlyForecastContainer" class="flex overflow-x-auto gap-4 p-4 -m-4 pb-6">
+                            </div>
+                    </div>
+
+                    <div id="contentDaily" class="tab-content hidden">
+                        <div id="dailyForecastContainer" class="space-y-3">
+                            </div>
+                    </div>
+                    
+                    <div id="contentMonthly" class="tab-content hidden p-6 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                        <h4 class="text-xl font-bold text-gray-700 mb-2">Monthly Outlook</h4>
+                        <p class="text-gray-500">True monthly weather forecasts are typically statistical and not available via these APIs.</p>
+                        <p class="text-gray-500 mt-1">For a professional version, this would show monthly temperature averages and precipitation norms.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-6 border-t pt-6 border-gray-200">
+                    <div class="bg-gray-50/70 p-5 rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 border border-gray-200">
                         <i data-lucide="wind" class="w-8 h-8 text-cyan-600"></i>
                         <p class="text-base text-gray-500 font-medium">Wind</p>
                         <p id="windSpeed" class="text-xl font-bold text-gray-800">--</p>
-                        <p id="windDirection" class="text-sm text-gray-500">--</p>
+                        <p id="windDirection" class="text-sm text-gray-500 text-center">--</p>
                     </div>
-                    <div class="bg-gray-50 p-5 rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 border border-gray-200">
+                    <div class="bg-gray-50/70 p-5 rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 border border-gray-200">
                         <i data-lucide="droplet" class="w-8 h-8 text-blue-600"></i>
                         <p class="text-base text-gray-500 font-medium">Humidity</p>
                         <p id="humidity" class="text-xl font-bold text-gray-800">--</p>
                     </div>
-                    <div class="bg-gray-50 p-5 rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 border border-gray-200">
+                    <div class="bg-gray-50/70 p-5 rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 border border-gray-200">
                         <i data-lucide="cloud-rain" class="w-8 h-8 text-indigo-600"></i>
-                        <p class="text-base text-gray-500 font-medium">Precip (1h)</p>
+                        <p class="text-base text-gray-500 font-medium">Precipitation (1h)</p>
                         <p id="precipitation" class="text-xl font-bold text-gray-800">--</p>
                     </div>
-                    <div class="bg-gray-50 p-5 rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 border border-gray-200">
+                    <div class="bg-gray-50/70 p-5 rounded-xl shadow-lg flex flex-col items-center justify-center gap-1 border border-gray-200">
                         <i data-lucide="microscope" class="w-8 h-8 text-green-600"></i>
                         <p class="text-base text-gray-500 font-medium">PM2.5</p>
                         <p id="pm25" class="text-xl font-bold text-gray-800">--</p>
@@ -282,14 +391,14 @@ def home():
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6 border-gray-200">
-                    <div class="flex items-center justify-center gap-4 bg-gray-50 p-5 rounded-lg border border-gray-200 shadow-md">
+                    <div class="flex items-center justify-center gap-4 bg-gray-50/70 p-5 rounded-lg border border-gray-200 shadow-md">
                         <i data-lucide="sunrise" class="w-8 h-8 text-orange-500"></i>
                         <div class="text-center sm:text-left"> 
                             <p class="text-base text-gray-500 font-medium">Sunrise</p>
                             <p id="sunriseTime" class="text-2xl font-bold text-gray-800">--:--</p>
                         </div>
                     </div>
-                    <div class="flex items-center justify-center gap-4 bg-gray-50 p-5 rounded-lg border border-gray-200 shadow-md">
+                    <div class="flex items-center justify-center gap-4 bg-gray-50/70 p-5 rounded-lg border border-gray-200 shadow-md">
                         <i data-lucide="sunset" class="w-8 h-8 text-red-500"></i>
                         <div class="text-center sm:text-left">
                             <p class="text-base text-gray-500 font-medium">Sunset</p>
@@ -320,25 +429,112 @@ def home():
             const loadingIndicator = document.getElementById('loadingIndicator');
             const weatherResult = document.getElementById('weatherResult');
             const errorMessage = document.getElementById('errorMessage');
-            const errorText = document.getElementById('errorText');
             const aqiCard = document.getElementById('aqiCard');
             const weatherIcon = document.getElementById('weatherIcon');
+            const hourlyContainer = document.getElementById('hourlyForecastContainer');
+            const dailyContainer = document.getElementById('dailyForecastContainer');
+            const body = document.body;
 
-            // --- JS Helper Functions (for display) ---
+            // Tab elements
+            const tabHourly = document.getElementById('tabHourly');
+            const tabDaily = document.getElementById('tabDaily');
+            const tabMonthly = document.getElementById('tabMonthly');
+            const contentHourly = document.getElementById('contentHourly');
+            const contentDaily = document.getElementById('contentDaily');
+            const contentMonthly = document.getElementById('contentMonthly');
 
-            // The AQI/UV status/risk functions are now handled mostly by the backend (Python) for robustness
-            // The frontend only applies the styles and prints the text provided by the backend.
+            function switchTab(activeTab) {
+                // Deactivate all
+                [tabHourly, tabDaily, tabMonthly].forEach(tab => {
+                    tab.classList.remove('border-indigo-600', 'text-indigo-600');
+                    tab.classList.add('border-transparent', 'text-gray-500');
+                });
+                [contentHourly, contentDaily, contentMonthly].forEach(content => {
+                    content.classList.add('hidden');
+                });
 
-            function formatTime(timestamp, timezoneOffset) {
-                // Timezone offset is in seconds from UTC.
-                // We add the offset to the timestamp (already in seconds) and format it as UTC time.
+                // Activate selected tab and content
+                activeTab.classList.remove('border-transparent', 'text-gray-500');
+                activeTab.classList.add('border-indigo-600', 'text-indigo-600');
+                
+                if (activeTab === tabHourly) contentHourly.classList.remove('hidden');
+                if (activeTab === tabDaily) contentDaily.classList.remove('hidden');
+                if (activeTab === tabMonthly) contentMonthly.classList.remove('hidden');
+            }
+
+            // Tab listeners
+            tabHourly.addEventListener('click', () => switchTab(tabHourly));
+            tabDaily.addEventListener('click', () => switchTab(tabDaily));
+            tabMonthly.addEventListener('click', () => switchTab(tabMonthly));
+
+            function formatTime(timestamp, timezoneOffset, isHourly = false) {
                 const date = new Date((timestamp + timezoneOffset) * 1000);
+                
+                if (isHourly) {
+                    const now = new Date();
+                    const nowUTC = Math.floor(now.getTime() / 1000) + (now.getTimezoneOffset() * 60);
+                    const isCurrentHour = Math.floor(timestamp / 3600) === Math.floor(nowUTC / 3600);
+                    
+                    if (isCurrentHour) return "Now";
+                    
+                    return date.toLocaleTimeString('en-US', {
+                        hour: 'numeric',
+                        hour12: true,
+                        timeZone: 'UTC' 
+                    });
+                }
+                
                 return date.toLocaleTimeString('en-US', {
                     hour: '2-digit',
                     minute: '2-digit',
                     hour12: true,
                     timeZone: 'UTC'  
                 });
+            }
+
+            function renderHourlyForecast(forecastArray, timezoneOffset) {
+                hourlyContainer.innerHTML = '';
+                if (forecastArray.length === 0) {
+                    hourlyContainer.innerHTML = '<p class="text-gray-500 p-4">Hourly forecast data not available.</p>';
+                    return;
+                }
+
+                forecastArray.forEach((item) => {
+                    // Open-Meteo time is a UTC string, convert it to a UNIX timestamp for formatting
+                    const utcTimestamp = new Date(item.time).getTime() / 1000;
+                    const timeLabel = formatTime(utcTimestamp, timezoneOffset, true);
+                    
+                    const card = document.createElement('div');
+                    card.className = 'flex flex-col items-center justify-between p-3 sm:p-4 rounded-xl shadow-md bg-white border border-gray-200 min-w-[75px] sm:min-w-[100px] flex-shrink-0';
+                    card.innerHTML = `
+                        <p class="text-sm font-semibold ${timeLabel === 'Now' ? 'text-indigo-600' : 'text-gray-600'}">${timeLabel}</p>
+                        <i data-lucide="${item.iconName}" class="w-6 h-6 sm:w-8 sm:h-8 text-gray-700 my-2"></i>
+                        <p class="text-xl font-bold text-gray-800">${item.temperature}</p>
+                    `;
+                    hourlyContainer.appendChild(card);
+                });
+                lucide.createIcons();
+            }
+
+            function renderDailyForecast(forecastArray) {
+                dailyContainer.innerHTML = '';
+                if (forecastArray.length === 0) {
+                    dailyContainer.innerHTML = '<p class="text-gray-500 p-4">Daily forecast data not available.</p>';
+                    return;
+                }
+
+                forecastArray.forEach((item) => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100';
+                    row.innerHTML = `
+                        <p class="text-lg font-semibold w-1/4 ${item.day === 'Today' ? 'text-indigo-600' : 'text-gray-800'}">${item.day}</p>
+                        <i data-lucide="${item.iconName}" class="w-7 h-7 text-indigo-500"></i>
+                        <p class="text-lg font-bold text-gray-800 w-1/4 text-right">${item.tempMax}</p>
+                        <p class="text-lg text-gray-500 w-1/4 text-right">${item.tempMin}</p>
+                    `;
+                    dailyContainer.appendChild(row);
+                });
+                lucide.createIcons();
             }
             
             function setLoadingState(isLoading) {
@@ -351,45 +547,54 @@ def home():
 
             function displayError(message) {
                 setLoadingState(false);
-                errorText.textContent = message;
+                document.getElementById('errorText').textContent = message;
                 errorMessage.classList.remove('hidden');
             }
             
             function updateWeatherDisplay(data) {
                 setLoadingState(false);
                 
-                // Update Main Info
+                // 1. Dynamic Background & Text Color
+                body.className = body.className.split(' ').filter(cls => !cls.startsWith('bg-gradient-') && !cls.startsWith('text-')).join(' ');
+                body.classList.add(data.gradientClass);
+                body.classList.add('min-h-screen', 'flex', 'items-start', 'justify-center', 'p-4', 'content-wrapper');
+
+                // 2. Main Info
                 document.getElementById('locationName').textContent = data.locationName;
                 document.getElementById('weatherDescription').textContent = data.description;
                 document.getElementById('temperature').textContent = data.temperature;
                 document.getElementById('feelsLike').textContent = data.feelsLike;
                 
-                // Update Dynamic Weather Icon
+                // 3. Dynamic Icon
                 weatherIcon.setAttribute('data-lucide', data.iconName);
                 
-                // Update AQI Card
+                // 4. AQI Card
                 document.getElementById('aqiValue').textContent = data.aqiValue ?? "N/A";
                 document.getElementById('aqiStatus').textContent = data.aqiStatus;
-                aqiCard.className = `p-6 rounded-2xl shadow-2xl border-4 text-center transition duration-500 flex flex-col justify-between ${data.aqiColorClasses}`; 
+                aqiCard.className = `p-6 rounded-2xl shadow-2xl border-4 text-center flex flex-col justify-between hover:scale-[1.02] transition duration-300 ${data.aqiColorClasses}`; 
 
-                // Update UV Card
+                // 5. UV Card
                 document.getElementById('uvIndex').textContent = data.uvIndex;
                 document.getElementById('uvRisk').textContent = data.uvRisk;
 
-                // Update Secondary Metrics
+                // 6. Secondary Metrics
                 document.getElementById('humidity').textContent = data.humidity;
                 document.getElementById('windSpeed').textContent = data.windSpeed;
                 document.getElementById('windDirection').textContent = data.windDirection;
                 document.getElementById('precipitation').textContent = data.precipitation;
                 document.getElementById('pm25').textContent = data.pm25;
                 
-                // Update Sun Times
+                // 7. Sun Times
                 document.getElementById('sunriseTime').textContent = formatTime(data.sunrise, data.timezone);
                 document.getElementById('sunsetTime').textContent = formatTime(data.sunset, data.timezone);
                 
+                // 8. Forecasts (New Features)
+                renderHourlyForecast(data.hourlyForecast, data.timezone);
+                renderDailyForecast(data.dailyForecast);
+
                 weatherResult.classList.remove('hidden');
-                
-                // Re-render all lucide icons
+                // Ensure default tab is selected on fresh load
+                switchTab(tabHourly);
                 lucide.createIcons();
             }
 
@@ -406,7 +611,7 @@ def home():
                     const response = await fetch(fullBackendUrl);
                     const data = await response.json();
                     if (!response.ok) {
-                        displayError(data.error || `An unknown error occurred (HTTP ${response.status})`);
+                        displayError(data.error || `City not found or data error (HTTP ${response.status})`);
                     } else {
                         updateWeatherDisplay(data);
                     }
@@ -418,8 +623,7 @@ def home():
 
             searchButton.addEventListener('click', fetchAllDataFromServer);
             
-            // Initial call to populate with Chandigarh data on load (like the screenshot)
-            // You can comment this out if you prefer a blank initial state.
+            // Initial call to populate with default city on load
             document.addEventListener('DOMContentLoaded', () => {
                 cityInput.value = "Chandigarh"; 
                 fetchAllDataFromServer(); 
@@ -434,4 +638,5 @@ def home():
 # --- 3. RUN THE PYTHON SERVER ---
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
+    # Note: debug=False is recommended for deployment (e.g., on Render)
     app.run(host='0.0.0.0', port=port, debug=False)
