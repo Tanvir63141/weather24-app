@@ -1,6 +1,3 @@
-## Complete Updated Weather24 Pro Code
-
-#python
 import requests
 import json
 from flask import Flask, request, jsonify, Response
@@ -10,9 +7,12 @@ import math
 
 # --- 1. PYTHON BACKEND LOGIC (using Flask) ---
 
+# The Flask application instance is named 'app', matching the gunicorn command: web_app:app
 app = Flask(__name__)
 
 # --- Configuration ---
+# NOTE: Using a hardcoded key here for functional demonstration. 
+# For true production, use environment variables (e.g., os.environ.get('OWM_API_KEY')).
 OWM_API_KEY = "207cf060d7c9af525f46c1e0f15b5b60"
 OWM_WEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
 OM_AQI_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
@@ -58,17 +58,17 @@ def get_uv_risk(uvi):
 
 def map_wmo_to_lucide_icon(code, is_day=1):
     """Maps WMO weather codes (Open-Meteo) to Lucide icon names."""
-    if code in [0]: return 'sun' if is_day else 'moon' # Clear sky
-    if code in [1, 2, 3]: return 'cloud-sun' if is_day else 'cloud-moon' # Mainly clear, partly cloudy, overcast
-    if code in [45, 48]: return 'fog' # Fog and depositing rime fog
-    if code in [51, 53, 55]: return 'cloud-drizzle' # Drizzle
-    if code in [56, 57]: return 'snow-flake' if is_day else 'cloud-snow' # Freezing Drizzle
-    if code in [61, 63, 65, 80, 81, 82]: return 'cloud-rain' # Rain
-    if code in [66, 67]: return 'cloud-drizzle' # Freezing Rain
-    if code in [71, 73, 75, 85, 86]: return 'snow-flake' # Snow fall
-    if code in [77]: return 'cloud-hail' # Snow grains
-    if code in [95, 96, 99]: return 'cloud-lightning' # Thunderstorm
-    return 'cloud' # Default
+    if code in [0]: return 'sun' if is_day else 'moon' 
+    if code in [1, 2, 3]: return 'cloud-sun' if is_day else 'cloud-moon'
+    if code in [45, 48]: return 'fog'
+    if code in [51, 53, 55]: return 'cloud-drizzle'
+    if code in [56, 57]: return 'snow-flake' if is_day else 'cloud-snow'
+    if code in [61, 63, 65, 80, 81, 82]: return 'cloud-rain'
+    if code in [66, 67]: return 'cloud-drizzle'
+    if code in [71, 73, 75, 85, 86]: return 'snow-flake'
+    if code in [77]: return 'cloud-hail'
+    if code in [95, 96, 99]: return 'cloud-lightning'
+    return 'cloud'
 
 def format_hourly_forecast(hourly_data, timezone_offset):
     """Processes Open-Meteo hourly data into a simplified list for the frontend."""
@@ -76,14 +76,12 @@ def format_hourly_forecast(hourly_data, timezone_offset):
         return []
 
     forecast_list = []
-    # We grab the next 8 hours of data (time, temp, weather code)
     for i in range(min(8, len(hourly_data['time']))):
-        # We need to determine if it is day or night for the hourly icons
         is_day = hourly_data.get('is_day', [1])[i]
         weather_code = hourly_data.get('weather_code', [800])[i]
 
         forecast_list.append({
-            'time': hourly_data['time'][i], # UTC timestamp string
+            'time': hourly_data['time'][i],
             'temperature': f"{hourly_data.get('temperature_2m', [None])[i]:.0f}°",
             'iconName': map_wmo_to_lucide_icon(weather_code, is_day)
         })
@@ -95,20 +93,18 @@ def format_daily_forecast(daily_data):
         return []
 
     forecast_list = []
-    # We grab the next 7 days of data
     for i in range(min(7, len(daily_data['time']))):
         date_str = daily_data['time'][i]
         weather_code = daily_data.get('weather_code', [800])[i]
         temp_max = daily_data.get('temperature_2m_max', [None])[i]
         temp_min = daily_data.get('temperature_2m_min', [None])[i]
         
-        # Determine day name
         date_obj = datetime.strptime(date_str, "%Y-%m-%d")
         day_name = "Today" if i == 0 else date_obj.strftime("%a")
 
         forecast_list.append({
             'day': day_name,
-            'iconName': map_wmo_to_lucide_icon(weather_code, is_day=1), # Assume day icon for daily view
+            'iconName': map_wmo_to_lucide_icon(weather_code, is_day=1),
             'tempMax': f"{temp_max:.0f}°" if temp_max is not None else '--',
             'tempMin': f"{temp_min:.0f}°" if temp_min is not None else '--',
         })
@@ -147,9 +143,10 @@ def get_weather_data():
     except requests.exceptions.HTTPError as err:
         if err.response.status_code == 404:
             return jsonify({"error": f"City '{city_name}' not found."}), 404
-        return jsonify({"error": f"Weather service error: {err}"}), 500
+        # Return generic error for other HTTP codes (API key invalid, 5xx errors, etc.)
+        return jsonify({"error": f"Weather service error (HTTP {err.response.status_code})."}), 500 
     except requests.exceptions.RequestException as err:
-        return jsonify({"error": f"Network error: {err}"}), 500
+        return jsonify({"error": f"Network error connecting to OWM: {err}"}), 500
 
     lat, lon = weather_data['coord']['lat'], weather_data['coord']['lon']
     
@@ -170,8 +167,8 @@ def get_weather_data():
             'latitude': lat, 
             'longitude': lon, 
             'current': 'uv_index,is_day', 
-            'hourly': 'temperature_2m,weather_code,is_day', # Added is_day to hourly
-            'daily': 'weather_code,temperature_2m_max,temperature_2m_min', # Added daily fields
+            'hourly': 'temperature_2m,weather_code,is_day',
+            'daily': 'weather_code,temperature_2m_max,temperature_2m_min',
             'forecast_days': 7, 
             'timezone': 'auto'
         }
@@ -181,7 +178,7 @@ def get_weather_data():
     except Exception as e:
         print(f"Warning: Could not fetch UV/Hourly/Daily data. Error: {e}")
 
-    # 4. Consolidate Data
+    # 4. Consolidate Data and Format
     rain_1h = weather_data.get('rain', {}).get('1h', 0)
     snow_1h = weather_data.get('snow', {}).get('1h', 0)
     precipitation_total = rain_1h + snow_1h
@@ -193,11 +190,10 @@ def get_weather_data():
 
     uvi_value = forecast_data.get('current', {}).get('uv_index')
     is_day = forecast_data.get('current', {}).get('is_day', 1) 
-    time_of_day = 'day' if is_day == 1 else 'night'
     
-    # Get initial weather description and map to icon/gradient
     weather_desc = weather_data['weather'][0]['description']
-    wmo_code = weather_data['weather'][0].get('id', 800) # OpenWeatherMap ID is not WMO, but a fallback is fine
+    # OWM ID is used as an approximate WMO code for icon mapping
+    wmo_code = weather_data['weather'][0]['id'] 
 
     # Format strings
     formatted_pm25 = f"{pm25_value:.1f} µg/m³" if pm25_value is not None and not math.isnan(pm25_value) else "N/A"
@@ -208,7 +204,6 @@ def get_weather_data():
     final_data = {
         "locationName": f"{weather_data['name']}, {weather_data['sys']['country']}",
         "description": weather_desc.title(),
-        # For the main icon, we still use a simple description mapping for OWM data
         "iconName": map_wmo_to_lucide_icon(wmo_code, is_day), 
         "gradientClass": get_background_gradient(weather_desc), 
         "temperature": f"{weather_data['main']['temp']:.0f}°C",
@@ -240,6 +235,7 @@ def get_weather_data():
 # --- API Endpoint 2: The Website (Serves the HTML/CSS/JS) ---
 @app.route('/')
 def home():
+    # The entire production-ready HTML/CSS/JS frontend
     html_content = """
     <!DOCTYPE html>
     <html lang="en">
@@ -343,10 +339,10 @@ def home():
                 </div>
 
                 <div class="space-y-4">
-                    <div class="flex border-b border-gray-300">
-                        <button id="tabHourly" class="px-4 py-2 text-lg font-semibold border-b-2 border-indigo-600 text-indigo-600 transition duration-300">Hourly Forecast</button>
-                        <button id="tabDaily" class="px-4 py-2 text-lg font-semibold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition duration-300">7-Day Forecast</button>
-                        <button id="tabMonthly" class="px-4 py-2 text-lg font-semibold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition duration-300">Monthly View (Concept)</button>
+                    <div class="flex border-b border-gray-300 overflow-x-auto whitespace-nowrap">
+                        <button id="tabHourly" class="px-4 py-2 text-lg font-semibold border-b-2 border-indigo-600 text-indigo-600 transition duration-300 flex-shrink-0">Hourly Forecast</button>
+                        <button id="tabDaily" class="px-4 py-2 text-lg font-semibold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition duration-300 flex-shrink-0">7-Day Forecast</button>
+                        <button id="tabMonthly" class="px-4 py-2 text-lg font-semibold border-b-2 border-transparent text-gray-500 hover:text-indigo-600 transition duration-300 flex-shrink-0">Monthly View (Concept)</button>
                     </div>
 
                     <div id="contentHourly" class="tab-content">
@@ -468,15 +464,18 @@ def home():
             tabMonthly.addEventListener('click', () => switchTab(tabMonthly));
 
             function formatTime(timestamp, timezoneOffset, isHourly = false) {
+                // Adjust timestamp by adding the timezone offset (in seconds)
                 const date = new Date((timestamp + timezoneOffset) * 1000);
                 
                 if (isHourly) {
                     const now = new Date();
                     const nowUTC = Math.floor(now.getTime() / 1000) + (now.getTimezoneOffset() * 60);
+                    // Check if the timestamp is within the current hour (within 3600 seconds)
                     const isCurrentHour = Math.floor(timestamp / 3600) === Math.floor(nowUTC / 3600);
                     
                     if (isCurrentHour) return "Now";
                     
+                    // Display hour (e.g., 3 PM)
                     return date.toLocaleTimeString('en-US', {
                         hour: 'numeric',
                         hour12: true,
@@ -484,6 +483,7 @@ def home():
                     });
                 }
                 
+                // Display 2-digit hour/minute (e.g., 06:33 AM)
                 return date.toLocaleTimeString('en-US', {
                     hour: '2-digit',
                     minute: '2-digit',
@@ -500,7 +500,6 @@ def home():
                 }
 
                 forecastArray.forEach((item) => {
-                    // Open-Meteo time is a UTC string, convert it to a UNIX timestamp for formatting
                     const utcTimestamp = new Date(item.time).getTime() / 1000;
                     const timeLabel = formatTime(utcTimestamp, timezoneOffset, true);
                     
@@ -528,7 +527,9 @@ def home():
                     row.className = 'flex items-center justify-between p-4 bg-white rounded-xl shadow-sm border border-gray-100';
                     row.innerHTML = `
                         <p class="text-lg font-semibold w-1/4 ${item.day === 'Today' ? 'text-indigo-600' : 'text-gray-800'}">${item.day}</p>
-                        <i data-lucide="${item.iconName}" class="w-7 h-7 text-indigo-500"></i>
+                        <div class="flex items-center w-1/4 justify-center">
+                           <i data-lucide="${item.iconName}" class="w-7 h-7 text-indigo-500"></i>
+                        </div>
                         <p class="text-lg font-bold text-gray-800 w-1/4 text-right">${item.tempMax}</p>
                         <p class="text-lg text-gray-500 w-1/4 text-right">${item.tempMin}</p>
                     `;
@@ -551,7 +552,7 @@ def home():
                 errorMessage.classList.remove('hidden');
             }
             
-            function updateWeatherDisplay(data) {
+            async function updateWeatherDisplay(data) {
                 setLoadingState(false);
                 
                 // 1. Dynamic Background & Text Color
@@ -635,8 +636,8 @@ def home():
     return Response(html_content, mimetype='text/html')
 
 
-# --- 3. RUN THE PYTHON SERVER ---
+# --- 3. RUN THE PYTHON SERVER (Used for local testing) ---
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    # Note: debug=False is recommended for deployment (e.g., on Render)
-    app.run(host='0.0.0.0', port=port, debug=False)
+    # This block is ignored by Gunicorn but is useful for local development
+    app.run(host='0.0.0.0', port=port, debug=True)
