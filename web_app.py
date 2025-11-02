@@ -106,10 +106,11 @@ def home():
 
         <div class="w-full max-w-3xl bg-white rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
 
-            <h1 class="text-3xl font-extrabold text-gray-800 text-center flex items-center justify-center gap-2">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-800 text-center flex items-center justify-center gap-2">
                 <i data-lucide="cloud-sun-wind" class="w-7 h-7 text-indigo-600"></i>
                 Weather24
             </h1>
+
 
             <div class="flex flex-col sm:flex-row gap-3">
                 <input type="text" id="cityInput" placeholder="Enter city name (e.g., Paris, Sydney)"
